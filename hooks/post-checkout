@@ -1,0 +1,29 @@
+#!/bin/bash
+
+set -eu -o pipefail
+
+if [ -z "${BUILDKITE_PLUGIN_GIT_S3_CACHE_BUCKET:-}" ]; then
+  echo "+++ git S3 cache plugin error"
+  echo "Bucket not configured."
+  exit 1
+fi
+
+if [ -z "${BUILDKITE_PLUGIN_GIT_S3_CACHE_PATH:-}" ]; then
+  BUILDKITE_PLUGIN_GIT_S3_CACHE_PATH=$BUILDKITE_ORGANIZATION_SLUG-$BUILDKITE_PIPELINE_SLUG.git.tar.gz
+fi
+
+BUILDKITE_PLUGIN_GIT_S3_CACHE_URL="s3://$BUILDKITE_PLUGIN_GIT_S3_CACHE_BUCKET/$BUILDKITE_PLUGIN_GIT_S3_CACHE_PATH"
+
+if [ -d "$BUILDKITE_BUILD_CHECKOUT_PATH/.git" ]; then
+  if [ -f "$BUILDKITE_BUILD_CHECKOUT_PATH.git.tar.gz" ]; then
+    if [ -n "$(find "$BUILDKITE_BUILD_CHECKOUT_PATH.git.tar.gz" -mmin -60)" ]; then
+      echo "git s3 cache less than an hour old. Skipping upload." >&2
+      exit
+    fi
+  fi
+
+  echo "~~~ Uploading git cache to :s3: $BUILDKITE_PLUGIN_GIT_S3_CACHE_URL" >&2
+
+  tar -C "$BUILDKITE_BUILD_CHECKOUT_PATH/.git" -czf "$BUILDKITE_BUILD_CHECKOUT_PATH.git.tar.gz" .
+  aws s3 cp --acl private "$BUILDKITE_BUILD_CHECKOUT_PATH.git.tar.gz" "$BUILDKITE_PLUGIN_GIT_S3_CACHE_URL"
+fi

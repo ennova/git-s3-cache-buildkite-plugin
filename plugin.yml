@@ -1,0 +1,10 @@
+name: git S3 cache
+description: Cache git repo in S3 for faster checkouts
+author: https://github.com/ennova
+requirements: []
+configuration:
+  properties:
+    bucket:
+      type: string
+  required:
+    - bucket

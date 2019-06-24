@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -eu -o pipefail
+
+if [ -z "${BUILDKITE_PLUGIN_GIT_S3_CACHE_BUCKET:-}" ]; then
+  echo "+++ git S3 cache plugin error"
+  echo "Bucket not configured."
+  exit 1
+fi
+
+if [ -z "${BUILDKITE_PLUGIN_GIT_S3_CACHE_PATH:-}" ]; then
+  BUILDKITE_PLUGIN_GIT_S3_CACHE_PATH=$BUILDKITE_ORGANIZATION_SLUG-$BUILDKITE_PIPELINE_SLUG.git.tar.gz
+fi
+
+BUILDKITE_PLUGIN_GIT_S3_CACHE_URL="s3://$BUILDKITE_PLUGIN_GIT_S3_CACHE_BUCKET/$BUILDKITE_PLUGIN_GIT_S3_CACHE_PATH"
+
+if [ -z "$BUILDKITE_REPO" ] || [ -z "$BUILDKITE_BUILD_CHECKOUT_PATH" ]; then
+  echo "~~~ Skipping git cache" >&2;
+  exit
+fi
+
+if ! [ -d "$BUILDKITE_BUILD_CHECKOUT_PATH/.git" ]; then
+  echo "~~~ Downloading git cache from :s3: $BUILDKITE_PLUGIN_GIT_S3_CACHE_URL" >&2;
+  mkdir -p "$BUILDKITE_BUILD_CHECKOUT_PATH"
+  if ! aws s3 cp --no-progress "$BUILDKITE_PLUGIN_GIT_S3_CACHE_URL" "$BUILDKITE_BUILD_CHECKOUT_PATH.git.tar.gz"; then
+    echo "Could not download git cache." >&2
+    exit
+  fi
+
+  echo "~~~ Unpacking git cache" >&2;
+  rm -rf "$BUILDKITE_BUILD_CHECKOUT_PATH/.git.new"
+  mkdir "$BUILDKITE_BUILD_CHECKOUT_PATH/.git.new"
+  tar -C "$BUILDKITE_BUILD_CHECKOUT_PATH/.git.new" -xzf "$BUILDKITE_BUILD_CHECKOUT_PATH.git.tar.gz"
+  mv "$BUILDKITE_BUILD_CHECKOUT_PATH/.git.new" "$BUILDKITE_BUILD_CHECKOUT_PATH/.git"
+fi
