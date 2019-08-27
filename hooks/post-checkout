@@ -22,6 +22,14 @@ if [ -d "$BUILDKITE_BUILD_CHECKOUT_PATH/.git" ]; then
     fi
   fi
 
+  if pgrep -q ^git; then
+    echo "~~~ Waiting for git tasks to complete" >&2
+    while pgrep -q ^git; do
+      sleep 1
+    done
+    echo "Done."
+  fi
+
   echo "~~~ Uploading git cache to :s3: $BUILDKITE_PLUGIN_GIT_S3_CACHE_URL" >&2
 
   tar -C "$BUILDKITE_BUILD_CHECKOUT_PATH/.git" -czf "$BUILDKITE_BUILD_CHECKOUT_PATH.git.tar.gz" .
