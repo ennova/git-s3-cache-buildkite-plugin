@@ -22,9 +22,9 @@ if [ -d "$BUILDKITE_BUILD_CHECKOUT_PATH/.git" ]; then
     fi
   fi
 
-  if pgrep -q ^git; then
+  if pgrep ^git &> /dev/null; then
     echo "~~~ Waiting for git tasks to complete" >&2
-    while pgrep -q ^git; do
+    while pgrep ^git &> /dev/null; do
       sleep 1
     done
     echo "Done."
